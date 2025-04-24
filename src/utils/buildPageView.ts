@@ -11,7 +11,7 @@ import { PaginationOptions } from "../PaginationExtension";
 import { MIN_PARAGRAPH_HEIGHT } from "../constants/pagination";
 import { NodePosArray } from "../types/node";
 import { CursorMap } from "../types/cursor";
-import { Nullable, Undefinable } from "../types/record";
+import { Nullable } from "../types/record";
 import { MarginConfig } from "../types/page";
 import { moveToNearestValidCursorPosition, moveToThisTextBlock, setSelection, setSelectionAtEndOfDocument } from "./selection";
 import { inRange } from "./math";
@@ -166,114 +166,130 @@ const buildNewDocument = (
     options: PaginationOptions,
     contentNodes: NodePosArray,
     nodeHeights: number[]
-): { newDoc: PMNode; oldToNewPosMap: CursorMap } => {
+  ): { newDoc: PMNode; oldToNewPosMap: CursorMap } => {
     const { schema, doc } = editor.state;
     const { pageAmendmentOptions } = options;
     const {
-        pageNodeType: pageType,
-        headerFooterNodeType: headerFooterType,
-        bodyNodeType: bodyType,
-        paragraphNodeType: paragraphType,
+      pageNodeType: pageType,
+      headerFooterNodeType: headerFooterType,
+      bodyNodeType: bodyType,
+      paragraphNodeType: paragraphType,
     } = getPaginationNodeTypes(schema);
-
+  
     let pageNum = 0;
     const pages: PMNode[] = [];
     let existingPageNode: Nullable<PMNode> = doc.maybeChild(pageNum);
     let { pageNodeAttributes, pageRegionNodeAttributes, bodyPixelDimensions } = getPaginationNodeAttributes(editor, pageNum);
-
+  
     const constructHeaderFooter =
-        <HF extends HeaderFooter>(pageRegionType: HeaderFooter) =>
-        (headerFooterAttrs: HeaderFooterNodeAttributes<HF>): PMNode | undefined => {
-            if (!headerFooterType) return;
-
-            if (existingPageNode) {
-                const hfNode = getPageRegionNode(existingPageNode, pageRegionType);
-                if (hfNode) {
-                    return hfNode;
-                }
-            }
-
-            const emptyParagraph = paragraphType.create();
-            return headerFooterType.create(headerFooterAttrs, [emptyParagraph]);
-        };
-
-    const constructHeader = <HF extends HeaderFooter>(headerFooterAttrs: HeaderFooterNodeAttributes<HF>) => {
-        if (!pageAmendmentOptions.enableHeader) return;
-        return constructHeaderFooter("header")(headerFooterAttrs);
-    };
-    const constructFooter = <HF extends HeaderFooter>(headerFooterAttrs: HeaderFooterNodeAttributes<HF>) => {
-        if (!pageAmendmentOptions.enableFooter) return;
-        return constructHeaderFooter("footer")(headerFooterAttrs);
-    };
-
+      <HF extends HeaderFooter>(pageRegionType: HeaderFooter) =>
+      (headerFooterAttrs: HeaderFooterNodeAttributes<HF>): PMNode | undefined => {
+        if (!headerFooterType) return;
+        if (existingPageNode) {
+          const hfNode = getPageRegionNode(existingPageNode, pageRegionType);
+          if (hfNode) return hfNode;
+        }
+        return headerFooterType.create(headerFooterAttrs, [paragraphType.create()]);
+      };
+  
+    const constructHeader = <HF extends HeaderFooter>(headerFooterAttrs: HeaderFooterNodeAttributes<HF>) =>
+      pageAmendmentOptions.enableHeader ? constructHeaderFooter("header")(headerFooterAttrs) : undefined;
+  
+    const constructFooter = <HF extends HeaderFooter>(headerFooterAttrs: HeaderFooterNodeAttributes<HF>) =>
+      pageAmendmentOptions.enableFooter ? constructHeaderFooter("footer")(headerFooterAttrs) : undefined;
+  
     const constructPageRegions = (currentPageContent: PMNode[]): PMNode[] => {
-        const { body: bodyAttrs, footer: footerAttrs } = pageRegionNodeAttributes;
-        const pageBody = bodyType.create(bodyAttrs, currentPageContent);
-        const pageFooter = constructFooter(footerAttrs);
-
-        const pageRegions: Undefinable<PMNode>[] = [currentPageHeader, pageBody, pageFooter];
-        return pageRegions.filter((region) => !!region);
+      const { body: bodyAttrs, footer: footerAttrs } = pageRegionNodeAttributes;
+      const pageBody = bodyType.create(bodyAttrs, currentPageContent);
+      const pageFooter = constructFooter(footerAttrs);
+      const regions = [currentPageHeader, pageBody, pageFooter].filter(Boolean) as PMNode[];
+      return regions;
     };
-
+  
     const addPage = (currentPageContent: PMNode[]): PMNode => {
-        const pageNodeContents = constructPageRegions(currentPageContent);
-        const pageNode = pageType.create(pageNodeAttributes, pageNodeContents);
-        pages.push(pageNode);
-        return pageNode;
+      const pageNodeContents = constructPageRegions(currentPageContent);
+      const pageNode = pageType.create(pageNodeAttributes, pageNodeContents);
+      pages.push(pageNode);
+      return pageNode;
     };
-
-    // Header is constructed prior to the body because we need to know its node size for the cursor mapping
+  
     let currentPageHeader: PMNode | undefined = constructHeader(pageRegionNodeAttributes.header);
     let currentPageContent: PMNode[] = [];
     let currentHeight = 0;
-
-    const oldToNewPosMap: CursorMap = new Map<number, number>();
-    const pageOffset = 1,
-        bodyOffset = 1;
+  
+    const oldToNewPosMap: CursorMap = new Map();
+    const pageOffset = 1;
+    const bodyOffset = 1;
     let cumulativeNewDocPos = pageOffset + getMaybeNodeSize(currentPageHeader) + bodyOffset;
-
-    for (let i = 0; i < contentNodes.length; i++) {
-        const { node, pos: oldPos } = contentNodes[i];
-        const nodeHeight = nodeHeights[i];
-
-        const isPageFull = currentHeight + nodeHeight > bodyPixelDimensions.bodyHeight;
-        if (isPageFull && currentPageContent.length > 0) {
-            const pageNode = addPage(currentPageContent);
-            cumulativeNewDocPos += pageNode.nodeSize - getMaybeNodeSize(currentPageHeader);
-            currentPageContent = [];
-            currentHeight = 0;
-            existingPageNode = doc.maybeChild(++pageNum);
-            if (isPageNumInRange(doc, pageNum)) {
-                ({ pageNodeAttributes, pageRegionNodeAttributes, bodyPixelDimensions } = getPaginationNodeAttributes(editor, pageNum));
-            }
-
-            // Next page header
-            currentPageHeader = constructHeader(pageRegionNodeAttributes.header);
-            cumulativeNewDocPos += getMaybeNodeSize(currentPageHeader);
+  
+    // 1: GROUP content nodes: character + [optional parenthetical] + dialogue
+    const groupedNodes: NodePosArray[][] = [];
+    for (let i = 0; i < contentNodes.length; ) {
+      const curr = contentNodes[i];
+      const next = contentNodes[i + 1];
+      const nextNext = contentNodes[i + 2];
+  
+      const isCharacter = curr.node.attrs?.class === "character";
+      const isParenthetical = next?.node.attrs?.class === "parenthetical";
+      const isDialogue = nextNext?.node.attrs?.class === "dialogue";
+  
+      if (isCharacter && isParenthetical && isDialogue) {
+        // @ts-ignore
+        groupedNodes.push([curr, next, nextNext]);
+        i += 3;
+      } else if (isCharacter && next?.node.attrs?.class === "dialogue") {
+        // @ts-ignore
+        groupedNodes.push([curr, next]);
+        i += 2;
+      } else {
+        // @ts-ignore
+        groupedNodes.push([curr]);
+        i += 1;
+      }
+    }
+  
+    // 2: PAGINATE based on groups
+    for (const group of groupedNodes) {
+      const groupHeight = group.reduce((sum, item) => {
+        // @ts-ignore
+        const idx = contentNodes.findIndex((n) => n.pos === item.pos);
+        return sum + (idx !== -1 ? nodeHeights[idx] : MIN_PARAGRAPH_HEIGHT);
+      }, 0);
+  
+      const pageFull = currentHeight + groupHeight > bodyPixelDimensions.bodyHeight;
+      if (pageFull && currentPageContent.length > 0) {
+        const pageNode = addPage(currentPageContent);
+        cumulativeNewDocPos += pageNode.nodeSize - getMaybeNodeSize(currentPageHeader);
+        currentPageContent = [];
+        currentHeight = 0;
+        existingPageNode = doc.maybeChild(++pageNum);
+        if (isPageNumInRange(doc, pageNum)) {
+          ({ pageNodeAttributes, pageRegionNodeAttributes, bodyPixelDimensions } = getPaginationNodeAttributes(editor, pageNum));
         }
-
-        // Record the mapping from old position to new position
-        const nodeStartPosInNewDoc = cumulativeNewDocPos + currentPageContent.reduce((sum, n) => sum + n.nodeSize, 0);
-
+        currentPageHeader = constructHeader(pageRegionNodeAttributes.header);
+        cumulativeNewDocPos += getMaybeNodeSize(currentPageHeader);
+      }
+  
+      // @ts-ignore
+      for (const { node, pos: oldPos } of group) {
+        const offsetInPage = currentPageContent.reduce((sum, n) => sum + n.nodeSize, 0);
+        const nodeStartPosInNewDoc = cumulativeNewDocPos + offsetInPage;
         oldToNewPosMap.set(oldPos, nodeStartPosInNewDoc);
-
         currentPageContent.push(node);
-        currentHeight += nodeHeight;
+      }
+  
+      currentHeight += groupHeight;
     }
-
+  
     if (currentPageContent.length > 0) {
-        // Add final page (may not be full)
-        addPage(currentPageContent);
-    } else {
-        pageNum--;
+      addPage(currentPageContent);
     }
-
+  
     const newDoc = schema.topNodeType.create(null, pages);
-    const docSize = newDoc.content.size;
-    limitMappedCursorPositions(oldToNewPosMap, docSize);
-
+    limitMappedCursorPositions(oldToNewPosMap, newDoc.content.size);
+  
     return { newDoc, oldToNewPosMap };
-};
+  };  
 
 /**
  * Limit mapped cursor positions to document size to prevent out of bounds errors
