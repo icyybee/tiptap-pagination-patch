@@ -1,6 +1,6 @@
 {
     "name": "@kunalukey/tiptap-pagination-patch",
-    "version": "2.1.4",
+    "version": "2.1.5",
     "description": "Patch for Tiptap Pagination Extension",
     "author": "Kunal Ukey <kunalukey32@gmail.com> (https://www.github.com/helloukey)",
     "keywords": [
