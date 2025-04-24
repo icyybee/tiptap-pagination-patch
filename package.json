@@ -1,11 +1,11 @@
 {
-    "name": "tiptap-extension-pagination",
+    "name": "tiptap-pagination-patch",
     "version": "2.1.4",
-    "description": "Add pagination to your Tiptap editor",
+    "description": "Patch for Tiptap Pagination Extension",
     "author": {
-        "name": "Hugo Burton",
-        "email": "burto732@gmail.com",
-        "url": "https://www.github.com/hugs7"
+        "name": "Kunal Ukey",
+        "email": "kunalukey32@gmail.com",
+        "url": "https://www.github.com/helloukey"
     },
     "keywords": [
         "tiptap",
@@ -16,9 +16,9 @@
     "license": "ISC",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/hugs7/tiptap-extension-pagination.git"
+        "url": "git+https://github.com/helloukey/tiptap-pagination-patch.git"
     },
-    "homepage": "https://www.github.com/hugs7/tiptap-extension-pagination",
+    "homepage": "https://github.com/helloukey/tiptap-pagination-patch",
     "type": "module",
     "main": "dist/index.js",
     "module": "dist/index.js",
