@@ -22,7 +22,7 @@
 ## Installation
 
 ```bash
-npm install tiptap-extension-pagination
+npm install @kunalukey/tiptap-pagination-patch
 ```
 
 ## Usage
@@ -38,7 +38,7 @@ import React from "react";
 import { Stack } from "@mui/material";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import PaginationExtension, { PageNode, HeaderFooterNode, BodyNode } from "tiptap-extension-pagination";
+import PaginationExtension, { PageNode, HeaderFooterNode, BodyNode } from "@kunalukey/tiptap-pagination-patch";
 
 type DispatchOrFunction<T> = Dispatch<T> | ((value: T) => void);
 
@@ -153,7 +153,7 @@ This extension comes with a number of configuration options to tailor the editor
 You can specify as little or as much of the configuration as you like. For example:
 
 ```ts
-import PaginationExtension from "tiptap-extension-pagination";
+import PaginationExtension from "@kunalukey/tiptap-pagination-patch";
 
 // Then in your extension array (within your component)
 
