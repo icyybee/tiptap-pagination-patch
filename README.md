@@ -7,14 +7,14 @@
 <br />
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/tiptap-extension-pagination">
+  <a href="https://www.npmjs.com/package/@kunalukey/tiptap-pagination-patch">
     <img
      alt="NPM URL"
-     src="https://img.shields.io/badge/npm-tiptapExtensionpagination?logo=npm">
+     src="https://img.shields.io/badge/npm-tiptapPaginationPatch?logo=npm">
   </a>
   <img
      alt="version"
-     src="https://img.shields.io/npm/v/tiptap-extension-pagination.svg">
+     src="https://img.shields.io/npm/v/@kunalukey/tiptap-pagination-patch.svg">
 </p>
 
 ---
