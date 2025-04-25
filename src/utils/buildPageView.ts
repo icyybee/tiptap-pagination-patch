@@ -222,7 +222,7 @@ const buildNewDocument = (
     const bodyOffset = 1;
     let cumulativeNewDocPos = pageOffset + getMaybeNodeSize(currentPageHeader) + bodyOffset;
 
-    // 1: GROUP content nodes: character + [optional parenthetical] + dialogue
+    // Grouping nodes for widow/orphan protection
     const groupedNodes: NodePosArray[][] = [];
     for (let i = 0; i < contentNodes.length; ) {
         const curr = contentNodes[i];
@@ -236,45 +236,53 @@ const buildNewDocument = (
         const isParenthetical = classOf(next) === "parenthetical";
         const isDialogue = classOf(nextNext) === "dialogue";
 
-        // scene + next → group together
         if (isScene && next && classOf(next) !== "scene") {
             // @ts-ignore
             groupedNodes.push([curr, next]);
             i += 2;
-        }
-
-        // character + parenthetical + dialogue
-        else if (isCharacter && isParenthetical && isDialogue) {
+        } else if (isCharacter && isParenthetical && isDialogue) {
             // @ts-ignore
             groupedNodes.push([curr, next, nextNext]);
             i += 3;
-        }
-
-        // character + dialogue
-        else if (isCharacter && classOf(next) === "dialogue") {
+        } else if (isCharacter && classOf(next) === "dialogue") {
             // @ts-ignore
             groupedNodes.push([curr, next]);
             i += 2;
-        }
-
-        // default: just one node
-        else {
+        } else {
             // @ts-ignore
             groupedNodes.push([curr]);
             i += 1;
         }
     }
 
-    // 2: PAGINATE based on groups
-    for (const group of groupedNodes) {
+    // Pagination loop
+    for (let g = 0; g < groupedNodes.length; g++) {
+        const group = groupedNodes[g];
+
         const groupHeight = group.reduce((sum, item) => {
             // @ts-ignore
             const idx = contentNodes.findIndex((n) => n.pos === item.pos);
             return sum + (idx !== -1 ? nodeHeights[idx] : MIN_PARAGRAPH_HEIGHT);
         }, 0);
 
-        const pageFull = currentHeight + groupHeight > bodyPixelDimensions.bodyHeight;
-        if (pageFull && currentPageContent.length > 0) {
+        const classOf = (item: NodePosArray[number] | undefined) => item?.node.attrs?.class;
+        // @ts-ignore
+        const isSceneGroup = classOf(group[0]) === "scene";
+
+        let nextGroup = groupedNodes[g + 1];
+        const nextGroupHeight =
+            nextGroup?.reduce((sum, item) => {
+                // @ts-ignore
+                const idx = contentNodes.findIndex((n) => n.pos === item.pos);
+                return sum + (idx !== -1 ? nodeHeights[idx] : MIN_PARAGRAPH_HEIGHT);
+            }, 0) ?? 0;
+
+        const notEnoughSpaceForScenePlusNext =
+            isSceneGroup && nextGroup && currentHeight + groupHeight + nextGroupHeight > bodyPixelDimensions.bodyHeight;
+
+        const isPageFull = currentHeight + groupHeight > bodyPixelDimensions.bodyHeight || notEnoughSpaceForScenePlusNext;
+
+        if (isPageFull && currentPageContent.length > 0) {
             const pageNode = addPage(currentPageContent);
             cumulativeNewDocPos += pageNode.nodeSize - getMaybeNodeSize(currentPageHeader);
             currentPageContent = [];
