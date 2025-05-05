@@ -11,6 +11,7 @@ import { buildPageView } from "../utils/buildPageView";
 import { isNodeEmpty } from "../utils/nodes/node";
 import { doesDocHavePageNodes } from "../utils/nodes/page/page";
 import { PaginationOptions } from "../PaginationExtension";
+import { ySyncPluginKey } from 'y-prosemirror'  
 
 type PaginationPluginProps = {
     editor: Editor;
@@ -29,7 +30,9 @@ const PaginationPlugin = ({ editor, options }: PaginationPluginProps) => {
 
                     const { state } = view;
                     const { doc, schema } = state;
-                    const pageType = schema.nodes.page;
+                    const pageType = schema.nodes.page; 
+                    const ystate = ySyncPluginKey.getState(view.state);
+                    if (ystate?.isChangeOrigin) return;
 
                     if (!pageType) return;
 
