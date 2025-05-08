@@ -11,7 +11,7 @@ import { buildPageView } from "../utils/buildPageView";
 import { isNodeEmpty } from "../utils/nodes/node";
 import { doesDocHavePageNodes } from "../utils/nodes/page/page";
 import { PaginationOptions } from "../PaginationExtension";
-import { ySyncPluginKey } from 'y-prosemirror'  
+import { ySyncPluginKey } from "y-prosemirror";
 
 type PaginationPluginProps = {
     editor: Editor;
@@ -23,16 +23,20 @@ const PaginationPlugin = ({ editor, options }: PaginationPluginProps) => {
         key: new PluginKey("pagination"),
         view() {
             let isPaginating = false;
+            let renderCount = 0;
 
             return {
                 update(view: EditorView, prevState: EditorState) {
+                    console.log("v2.1.9")
                     if (isPaginating) return;
 
                     const { state } = view;
                     const { doc, schema } = state;
-                    const pageType = schema.nodes.page; 
+                    const pageType = schema.nodes.page;
                     const ystate = ySyncPluginKey.getState(view.state);
-                    if (ystate?.isChangeOrigin) return;
+                    if (ystate?.isChangeOrigin && renderCount > 5) return;
+
+                    renderCount++;
 
                     if (!pageType) return;
 
