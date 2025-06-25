@@ -1,0 +1,1 @@
+{"version":3,"file":"page.d.ts","sourceRoot":"","sources":["../../src/constants/page.ts"],"names":[],"mappings":"AAAA;;;;GAIG;AAGH,OAAO,EAAE,kBAAkB,EAAE,MAAM,eAAe,CAAC;AACnD,OAAO,EAAE,cAAc,EAAE,MAAM,eAAe,CAAC;AAK/C,eAAO,MAAM,cAAc,EAAG,MAAe,CAAC;AAE9C,eAAO,MAAM,mBAAmB;;;;;CAKtB,CAAC;AAEX,eAAO,MAAM,eAAe,EAAE,cAAc,CAAC,kBAAkB,CAK9D,CAAC;AAIF,eAAO,MAAM,gBAAgB,EAAE,MAAW,CAAC"}
