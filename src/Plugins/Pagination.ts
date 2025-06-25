@@ -13,6 +13,31 @@ import { doesDocHavePageNodes } from "../utils/nodes/page/page";
 import { PaginationOptions } from "../PaginationExtension";
 import { ySyncPluginKey } from "y-prosemirror";
 
+/**
+ * Throttle function: ensures fn is only called once every wait ms.
+ */
+function throttle<T extends (...args: any[]) => void>(fn: T, wait: number): T {
+    let lastTime = 0;
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    let lastArgs: any[] | null = null;
+
+    return function (this: any, ...args: any[]) {
+        const now = Date.now();
+        if (now - lastTime >= wait) {
+            lastTime = now;
+            fn.apply(this, args);
+        } else {
+            lastArgs = args;
+            if (timeout) clearTimeout(timeout);
+            timeout = setTimeout(() => {
+                lastTime = Date.now();
+                fn.apply(this, lastArgs!);
+                lastArgs = null;
+            }, wait - (now - lastTime));
+        }
+    } as T;
+}
+
 type PaginationPluginProps = {
     editor: Editor;
     options: PaginationOptions;
@@ -24,6 +49,19 @@ const PaginationPlugin = ({ editor, options }: PaginationPluginProps) => {
         view() {
             let isPaginating = false;
             let renderCount = 0;
+
+            // Throttle buildPageView to only run once every 300ms (adjust as needed)
+            const throttledBuildPageView = throttle(
+                (editor: Editor, view: EditorView, options: PaginationOptions) => {
+                    isPaginating = true;
+                    try {
+                        buildPageView(editor, view, options);
+                    } finally {
+                        isPaginating = false;
+                    }
+                },
+                300
+            );
 
             return {
                 update(view: EditorView, prevState: EditorState) {
@@ -46,13 +84,8 @@ const PaginationPlugin = ({ editor, options }: PaginationPluginProps) => {
 
                     if (!docChanged && hasPageNodes && !initialLoad) return;
 
-                    isPaginating = true;
-
-                    buildPageView(editor, view, options);
-
-                    // Reset paginating flag regardless of success or failure because we do not want to get
-                    // stuck out of this loop.
-                    isPaginating = false;
+                    // Call throttled (not raw) buildPageView
+                    throttledBuildPageView(editor, view, options);
                 },
             };
         },
