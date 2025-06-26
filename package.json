@@ -1,6 +1,6 @@
 {
     "name": "@icyybee/tiptap-pagination-patch",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "Forked patch of Tiptap Pagination Extension by Kunal Ukey",
     "author": "Beatrice Egumandi <ushiksmandi@gmail.com> (https://www.github.com/icyybee)",
     "keywords": [
