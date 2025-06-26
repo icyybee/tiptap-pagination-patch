@@ -51,21 +51,18 @@ const PaginationPlugin = ({ editor, options }: PaginationPluginProps) => {
             let renderCount = 0;
 
             // Throttle buildPageView to only run once every 300ms (adjust as needed)
-            const throttledBuildPageView = throttle(
-                (editor: Editor, view: EditorView, options: PaginationOptions) => {
-                    isPaginating = true;
-                    try {
-                        buildPageView(editor, view, options);
-                    } finally {
-                        isPaginating = false;
-                    }
-                },
-                300
-            );
+            const throttledBuildPageView = throttle((editor: Editor, view: EditorView, options: PaginationOptions) => {
+                isPaginating = true;
+                try {
+                    buildPageView(editor, view, options);
+                } finally {
+                    isPaginating = false;
+                }
+            }, 300);
 
             return {
                 update(view: EditorView, prevState: EditorState) {
-                    console.log("v2.1.9")
+                    console.log("v1.0.0");
                     if (isPaginating) return;
 
                     const { state } = view;

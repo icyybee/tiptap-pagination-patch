@@ -4898,7 +4898,7 @@ const PaginationPlugin = ({
       }, 300);
       return {
         update(view, prevState) {
-          console.log("v2.1.9");
+          console.log("v1.0.0");
           if (isPaginating) return;
           const {
             state
