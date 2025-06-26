@@ -12,6 +12,8 @@ import { isNodeEmpty } from "../utils/nodes/node";
 import { doesDocHavePageNodes } from "../utils/nodes/page/page";
 import { PaginationOptions } from "../PaginationExtension";
 import { ySyncPluginKey } from "y-prosemirror";
+import { buildPageViewIncremental } from "../utils/buildPageViewIncremental";
+import { getChangedRange } from "../utils/incrementalRange";
 
 /**
  * Throttle function: ensures fn is only called once every wait ms.
@@ -54,7 +56,14 @@ const PaginationPlugin = ({ editor, options }: PaginationPluginProps) => {
             const throttledBuildPageView = throttle((editor: Editor, view: EditorView, options: PaginationOptions) => {
                 isPaginating = true;
                 try {
-                    buildPageView(editor, view, options);
+                    const { state } = view;
+                    const { tr } = state;
+                    const range = getChangedRange(tr);
+                    if (range) {
+                        buildPageViewIncremental(editor, view, options, range.from, range.to);
+                    } else {
+                        buildPageView(editor, view, options);
+                    }
                 } finally {
                     isPaginating = false;
                 }
@@ -62,7 +71,7 @@ const PaginationPlugin = ({ editor, options }: PaginationPluginProps) => {
 
             return {
                 update(view: EditorView, prevState: EditorState) {
-                    console.log("v1.0.0");
+                    console.log("v1.0.1");
                     if (isPaginating) return;
 
                     const { state } = view;
