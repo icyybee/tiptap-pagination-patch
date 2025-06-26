@@ -1,28 +1,39 @@
-# Tiptap Pagination Extension
+# Tiptap Pagination Extension (Patch Fork)
 
 <h3 align="center">
-    A tiptap extension that allows for pages inside your document
+    A patched Tiptap extension that allows for pagination (pages) inside your document editor.
 </h3>
 
 <br />
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/@kunalukey/tiptap-pagination-patch">
+  <a href="https://www.npmjs.com/package/@icyybee/tiptap-pagination-patch">
     <img
      alt="NPM URL"
      src="https://img.shields.io/badge/npm-tiptapPaginationPatch?logo=npm">
   </a>
   <img
      alt="version"
-     src="https://img.shields.io/npm/v/@kunalukey/tiptap-pagination-patch.svg">
+     src="https://img.shields.io/npm/v/@icyybee/tiptap-pagination-patch.svg">
 </p>
+
+---
+
+## ✨ About This Fork
+
+This package is a patched and optimized fork of [Kunal Ukey](https://github.com/helloukey)'s [`@kunalukey/tiptap-pagination-patch`](https://www.npmjs.com/package/@kunalukey/tiptap-pagination-patch).
+
+> **Why this fork?**  
+> The original implementation caused noticeable lag or freezing with large documents. This fork introduces performance improvements that optimize rendering and interaction for long documents — preventing the editor from hanging or slowing down during complex pagination scenarios.
+
+It is maintained by [@icyybee (Beatrice Egumandi)](https://github.com/icyybee) to fix bugs and allow custom usage in production projects.
 
 ---
 
 ## Installation
 
 ```bash
-npm install @kunalukey/tiptap-pagination-patch
+npm install @icyybee/tiptap-pagination-patch
 ```
 
 ## Usage
@@ -38,7 +49,7 @@ import React from "react";
 import { Stack } from "@mui/material";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import PaginationExtension, { PageNode, HeaderFooterNode, BodyNode } from "@kunalukey/tiptap-pagination-patch";
+import PaginationExtension, { PageNode, HeaderFooterNode, BodyNode } from "@icyybee/tiptap-pagination-patch";
 
 type DispatchOrFunction<T> = Dispatch<T> | ((value: T) => void);
 
@@ -153,7 +164,7 @@ This extension comes with a number of configuration options to tailor the editor
 You can specify as little or as much of the configuration as you like. For example:
 
 ```ts
-import PaginationExtension from "@kunalukey/tiptap-pagination-patch";
+import PaginationExtension from "@icyybee/tiptap-pagination-patch";
 
 // Then in your extension array (within your component)
 
@@ -169,3 +180,8 @@ PaginationExtension.configure({
 # References
 
 Improved from [clemente-xyz](https://github.com/clemente-xyz)'s comment [here](https://github.com/ueberdosis/tiptap/discussions/5719#discussioncomment-11352489) in TipTap discussion [#5719](https://github.com/ueberdosis/tiptap/discussions/5719).
+
+# Maintainer
+
+This patched fork is maintained by [Beatrice Egumandi (icyybee)](https://github.com/icyybee).
+Bug fixes, improvements, and feature discussions are welcome via [Issues](https://github.com/icyybee/tiptap-pagination-patch/issues) or PRs.
