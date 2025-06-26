@@ -59,9 +59,12 @@ const PaginationPlugin = ({ editor, options }: PaginationPluginProps) => {
                     const { state } = view;
                     const { tr } = state;
                     const range = getChangedRange(tr);
+                    console.log("[Pagination] Incremental rebuild triggered");
                     if (range) {
+                        console.log(`[Pagination] Incremental: Rebuilding pages ${range.from} to ${range.to}`);
                         buildPageViewIncremental(editor, view, options, range.from, range.to);
                     } else {
+                        console.log("[Pagination] Fallback: Full pagination rebuild");
                         buildPageView(editor, view, options);
                     }
                 } finally {
@@ -71,7 +74,7 @@ const PaginationPlugin = ({ editor, options }: PaginationPluginProps) => {
 
             return {
                 update(view: EditorView, prevState: EditorState) {
-                    console.log("v1.0.1");
+                    console.log("v1.0.2");
                     if (isPaginating) return;
 
                     const { state } = view;
