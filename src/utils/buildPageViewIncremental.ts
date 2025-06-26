@@ -5,7 +5,7 @@ import { Node as PMNode } from "@tiptap/pm/model";
 import { getPageOfPos } from "./incrementalRange";
 
 // Helper: Rebuild a single page node (you should adapt your buildNewDocument logic to only this page)
-function rebuildPageNode(editor: Editor, doc: PMNode, pageNum: number, options: PaginationOptions, view: EditorView): PMNode | null {
+function rebuildPageNode(_editor: Editor, doc: PMNode, pageNum: number, _options: PaginationOptions, _view: EditorView): PMNode | null {
     // TODO: Implement: collect content for this page, measure, repaginate, return new page node
     // For now, just return the old node as a placeholder.
     return doc.maybeChild(pageNum) || null;
