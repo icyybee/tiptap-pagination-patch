@@ -53,24 +53,22 @@ const PaginationPlugin = ({ editor, options }: PaginationPluginProps) => {
             let renderCount = 0;
 
             // Throttle buildPageView to only run once every 300ms (adjust as needed)
-            const throttledBuildPageView = throttle((editor: Editor, view: EditorView, options: PaginationOptions) => {
-                isPaginating = true;
-                try {
-                    const { state } = view;
-                    const { tr } = state;
-                    const range = getChangedRange(tr);
-                    console.log("[Pagination] Incremental rebuild triggered");
-                    if (range) {
-                        console.log(`[Pagination] Incremental: Rebuilding pages ${range.from} to ${range.to}`);
-                        buildPageViewIncremental(editor, view, options, range.from, range.to);
-                    } else {
-                        console.log("[Pagination] Fallback: Full pagination rebuild");
-                        buildPageView(editor, view, options);
+            const throttledBuildPageView = throttle(
+                (editor: Editor, view: EditorView, options: PaginationOptions, prevState: EditorState) => {
+                    isPaginating = true;
+                    try {
+                        const changedRange = getChangedRange(prevState, view.state);
+                        if (changedRange) {
+                            buildPageViewIncremental(editor, view, options, prevState);
+                        } else {
+                            buildPageView(editor, view, options);
+                        }
+                    } finally {
+                        isPaginating = false;
                     }
-                } finally {
-                    isPaginating = false;
-                }
-            }, 300);
+                },
+                300
+            );
 
             return {
                 update(view: EditorView, prevState: EditorState) {
@@ -94,7 +92,7 @@ const PaginationPlugin = ({ editor, options }: PaginationPluginProps) => {
                     if (!docChanged && hasPageNodes && !initialLoad) return;
 
                     // Call throttled (not raw) buildPageView
-                    throttledBuildPageView(editor, view, options);
+                    throttledBuildPageView(editor, view, options, prevState);
                 },
             };
         },

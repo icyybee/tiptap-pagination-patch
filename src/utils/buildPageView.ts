@@ -71,7 +71,7 @@ export const buildPageView = (editor: Editor, view: EditorView, options: Paginat
  * @param doc - The document node.
  * @returns {NodePosArray} The content nodes and their positions.
  */
-const collectContentNodes = (doc: PMNode): NodePosArray => {
+export const collectContentNodes = (doc: PMNode): NodePosArray => {
     const contentNodes: NodePosArray = [];
     doc.forEach((pageNode, pageOffset) => {
         if (isPageNode(pageNode)) {
@@ -125,7 +125,7 @@ const calculateElementMargins = (element: HTMLElement): MarginConfig => {
  * @param contentNodes - The content nodes and their positions.
  * @returns {number[]} The heights of the content nodes.
  */
-const measureNodeHeights = (view: EditorView, contentNodes: NodePosArray): number[] => {
+export const measureNodeHeights = (view: EditorView, contentNodes: NodePosArray): number[] => {
     const paragraphType = view.state.schema.nodes.paragraph;
 
     const nodeHeights = contentNodes.map(({ pos, node }) => {
@@ -161,7 +161,7 @@ const measureNodeHeights = (view: EditorView, contentNodes: NodePosArray): numbe
  * @param nodeHeights - The heights of the content nodes.
  * @returns {newDoc: PMNode, oldToNewPosMap: CursorMap} The new document and the mapping from old positions to new positions.
  */
-const buildNewDocument = (
+export const buildNewDocument = (
     editor: Editor,
     options: PaginationOptions,
     contentNodes: NodePosArray,
@@ -341,7 +341,12 @@ const limitMappedCursorPositions = (oldToNewPosMap: CursorMap, docSize: number):
  * @param newDocContentSize - The size of the new document. Serves as maximum limit for cursor position.
  * @returns {number} The new cursor position.
  */
-const mapCursorPosition = (contentNodes: NodePosArray, oldCursorPos: number, oldToNewPosMap: CursorMap, newDocContentSize: number) => {
+export const mapCursorPosition = (
+    contentNodes: NodePosArray,
+    oldCursorPos: number,
+    oldToNewPosMap: CursorMap,
+    newDocContentSize: number
+) => {
     let newCursorPos: Nullable<number> = null;
     for (let i = 0; i < contentNodes.length; i++) {
         const { node, pos: oldNodePos } = contentNodes[i];
@@ -392,7 +397,7 @@ const isNodeAfterAvailable = ($pos: ResolvedPos): boolean => {
  * @param tr - The current transaction.
  * @returns {void}
  */
-const paginationUpdateCursorPosition = (tr: Transaction, newCursorPos: Nullable<number>): void => {
+export const paginationUpdateCursorPosition = (tr: Transaction, newCursorPos: Nullable<number>): void => {
     if (newCursorPos !== null) {
         const $pos = tr.doc.resolve(newCursorPos);
         let selection;
