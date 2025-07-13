@@ -12,8 +12,6 @@ import { isNodeEmpty } from "../utils/nodes/node";
 import { doesDocHavePageNodes } from "../utils/nodes/page/page";
 import { PaginationOptions } from "../PaginationExtension";
 import { ySyncPluginKey } from "y-prosemirror";
-import { buildPageViewIncremental } from "../utils/buildPageViewIncremental";
-import { getChangedRange } from "../utils/incrementalRange";
 
 /**
  * Throttle function: ensures fn is only called once every wait ms.
@@ -52,35 +50,27 @@ const PaginationPlugin = ({ editor, options }: PaginationPluginProps) => {
             let isPaginating = false;
             let renderCount = 0;
 
-            // Throttle buildPageView to only run once every 300ms (adjust as needed)
-            const throttledBuildPageView = throttle(
-                (editor: Editor, view: EditorView, options: PaginationOptions, prevState: EditorState) => {
-                    isPaginating = true;
-                    try {
-                        const changedRange = getChangedRange(prevState, view.state);
-                        if (changedRange) {
-                            buildPageViewIncremental(editor, view, options, prevState);
-                        } else {
-                            buildPageView(editor, view, options);
-                        }
-                    } finally {
-                        isPaginating = false;
-                    }
-                },
-                300
-            );
+            const throttledBuildFullView = throttle((editor: Editor, view: EditorView, options: PaginationOptions) => {
+                isPaginating = true;
+                try {
+                    buildPageView(editor, view, options);
+                } finally {
+                    isPaginating = false;
+                }
+            }, 500);
 
             return {
                 update(view: EditorView, prevState: EditorState) {
-                    console.log("v1.0.2");
+                    console.log("v1.0.3");
                     if (isPaginating) return;
 
                     const { state } = view;
                     const { doc, schema } = state;
                     const pageType = schema.nodes.page;
-                    const ystate = ySyncPluginKey.getState(view.state);
-                    if (ystate?.isChangeOrigin && renderCount > 5) return;
+                    const ystate = ySyncPluginKey.getState(state);
+                    const isRemoteChange = ystate?.isChangeOrigin;
 
+                    if (isRemoteChange && renderCount > 5) return;
                     renderCount++;
 
                     if (!pageType) return;
@@ -91,8 +81,7 @@ const PaginationPlugin = ({ editor, options }: PaginationPluginProps) => {
 
                     if (!docChanged && hasPageNodes && !initialLoad) return;
 
-                    // Call throttled (not raw) buildPageView
-                    throttledBuildPageView(editor, view, options, prevState);
+                    throttledBuildFullView(editor, view, options);
                 },
             };
         },

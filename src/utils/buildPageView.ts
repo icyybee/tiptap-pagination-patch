@@ -35,6 +35,12 @@ import { Editor } from "@tiptap/core";
  * @param options - The pagination options.
  * @returns {void}
  */
+
+const BATCH_SIZE = 150;
+const IDLE_TIMEOUT = 16;
+
+const runWhenIdle = typeof requestIdleCallback !== "undefined" ? requestIdleCallback : (cb: Function) => setTimeout(cb, IDLE_TIMEOUT);
+
 export const buildPageView = (editor: Editor, view: EditorView, options: PaginationOptions): void => {
     const { state, dispatch } = view;
     const { doc } = state;
@@ -47,21 +53,48 @@ export const buildPageView = (editor: Editor, view: EditorView, options: Paginat
         const { tr, selection } = state;
         const oldCursorPos = selection.from;
 
-        const { newDoc, oldToNewPosMap } = buildNewDocument(editor, options, contentNodes, nodeHeights);
+        let i = 0;
+        const paginatedChunks: NodePosArray[] = [];
+        const paginatedHeights: number[][] = [];
 
-        // Compare the content of the documents
-        if (!newDoc.content.eq(doc.content)) {
-            tr.replaceWith(0, doc.content.size, newDoc.content);
-            tr.setMeta("pagination", true);
+        function paginateNextBatch() {
+            const end = Math.min(i + BATCH_SIZE, contentNodes.length);
+            const batch = contentNodes.slice(i, end);
+            const heights = nodeHeights.slice(i, end);
 
-            const newDocContentSize = newDoc.content.size;
-            const newCursorPos = mapCursorPosition(contentNodes, oldCursorPos, oldToNewPosMap, newDocContentSize);
-            paginationUpdateCursorPosition(tr, newCursorPos);
+            paginatedChunks.push(batch);
+            paginatedHeights.push(heights);
+
+            i = end;
+
+            if (i < contentNodes.length) {
+                runWhenIdle(paginateNextBatch);
+            } else {
+                finalizePagination();
+            }
         }
 
-        dispatch(tr);
+        function finalizePagination() {
+            const flatNodes = paginatedChunks.flat();
+            const flatHeights = paginatedHeights.flat();
+
+            buildNewDocument(editor, options, flatNodes, flatHeights, ({ newDoc, oldToNewPosMap }) => {
+                if (!newDoc.content.eq(doc.content)) {
+                    tr.replaceWith(0, doc.content.size, newDoc.content);
+                    tr.setMeta("pagination", true);
+                    const newCursorPos = mapCursorPosition(flatNodes, oldCursorPos, oldToNewPosMap, newDoc.content.size);
+                    paginationUpdateCursorPosition(tr, newCursorPos);
+                }
+                dispatch(tr);
+            });
+        }
+
+        paginateNextBatch();
     } catch (error) {
-        console.error("Error updating page view. Details:", error);
+        console.error("Error during paginated batching:", error);
+        if (error instanceof Error && error.stack) {
+            console.error("Stack trace:", error.stack);
+        }
     }
 };
 
@@ -129,24 +162,25 @@ export const measureNodeHeights = (view: EditorView, contentNodes: NodePosArray)
     const paragraphType = view.state.schema.nodes.paragraph;
 
     const nodeHeights = contentNodes.map(({ pos, node }) => {
-        const domNode = view.nodeDOM(pos);
-        if (domNode instanceof HTMLElement) {
-            let { height } = domNode.getBoundingClientRect();
+        try {
+            const domNode = view.nodeDOM(pos);
+            if (!domNode || !(domNode instanceof HTMLElement) || !document.body.contains(domNode)) {
+                return MIN_PARAGRAPH_HEIGHT;
+            }
 
+            let { height } = domNode.getBoundingClientRect();
             const { top: marginTop } = calculateElementMargins(domNode);
 
-            if (height === 0) {
-                if (node.type === paragraphType || node.isTextblock) {
-                    // Assign a minimum height to empty paragraphs or textblocks
-                    height = MIN_PARAGRAPH_HEIGHT;
-                }
+            if (height === 0 && (node.type === paragraphType || node.isTextblock)) {
+                height = MIN_PARAGRAPH_HEIGHT;
             }
 
             // We use top margin only because there is overlap of margins between paragraphs
             return height + marginTop;
+        } catch (err) {
+            console.warn("⚠️ Error measuring node at pos:", pos, err);
+            return MIN_PARAGRAPH_HEIGHT;
         }
-
-        return MIN_PARAGRAPH_HEIGHT; // Default to minimum height if DOM element is not found
     });
 
     return nodeHeights;
@@ -165,8 +199,9 @@ export const buildNewDocument = (
     editor: Editor,
     options: PaginationOptions,
     contentNodes: NodePosArray,
-    nodeHeights: number[]
-): { newDoc: PMNode; oldToNewPosMap: CursorMap } => {
+    nodeHeights: number[],
+    onComplete: (result: { newDoc: PMNode; oldToNewPosMap: CursorMap }) => void
+): void => {
     const { schema, doc } = editor.state;
     const { pageAmendmentOptions } = options;
     const {
@@ -222,7 +257,6 @@ export const buildNewDocument = (
     const bodyOffset = 1;
     let cumulativeNewDocPos = pageOffset + getMaybeNodeSize(currentPageHeader) + bodyOffset;
 
-    // Grouping nodes for widow/orphan protection
     const groupedNodes: NodePosArray[][] = [];
     for (let i = 0; i < contentNodes.length; ) {
         const curr = contentNodes[i];
@@ -255,9 +289,10 @@ export const buildNewDocument = (
         }
     }
 
-    // Pagination loop
-    for (let g = 0; g < groupedNodes.length; g++) {
-        const group = groupedNodes[g];
+    let groupIndex = 0;
+
+    function processNextGroup() {
+        const group = groupedNodes[groupIndex];
 
         const groupHeight = group.reduce((sum, item) => {
             // @ts-ignore
@@ -269,7 +304,7 @@ export const buildNewDocument = (
         // @ts-ignore
         const isSceneGroup = classOf(group[0]) === "scene";
 
-        let nextGroup = groupedNodes[g + 1];
+        let nextGroup = groupedNodes[groupIndex + 1];
         const nextGroupHeight =
             nextGroup?.reduce((sum, item) => {
                 // @ts-ignore
@@ -304,16 +339,21 @@ export const buildNewDocument = (
         }
 
         currentHeight += groupHeight;
+        groupIndex++;
+
+        if (groupIndex < groupedNodes.length) {
+            runWhenIdle(processNextGroup);
+        } else {
+            if (currentPageContent.length > 0) {
+                addPage(currentPageContent);
+            }
+            const newDoc = schema.topNodeType.create(null, pages);
+            limitMappedCursorPositions(oldToNewPosMap, newDoc.content.size);
+            onComplete({ newDoc, oldToNewPosMap });
+        }
     }
 
-    if (currentPageContent.length > 0) {
-        addPage(currentPageContent);
-    }
-
-    const newDoc = schema.topNodeType.create(null, pages);
-    limitMappedCursorPositions(oldToNewPosMap, newDoc.content.size);
-
-    return { newDoc, oldToNewPosMap };
+    processNextGroup();
 };
 
 /**
